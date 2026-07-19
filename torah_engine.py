@@ -8,6 +8,7 @@ HEBREW_MAQAF        = 0x05BE
 SPACE_CHAR          = 0x0020
 SHIN_DOT            = 0x05C1
 SIN_DOT             = 0x05C2
+HEBREW_GERSHAYIM    = 0x05F4
 
 SOFIT_TO_REGULAR = {'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'}
 REGULAR_TO_SOFIT = {v: k for k, v in SOFIT_TO_REGULAR.items()}
@@ -37,7 +38,8 @@ class TorahEngine:
             for cp in range(HEBREW_NIKKUD_START, HEBREW_NIKKUD_END + 1)
             if cp not in excluded
         }
-        self.PURGE_TABLE = str.maketrans(purge_map)
+        # Destrucción radical del Gershayim
+        purge_map[HEBREW_GERSHAYIM] = None
 
         no_space_map = purge_map.copy()
         no_space_map[SPACE_CHAR] = None
@@ -46,7 +48,6 @@ class TorahEngine:
         no_space_map[SIN_DOT] = None
         self.NO_SPACE_TABLE = str.maketrans(no_space_map)
 
-        # PARCHE APLICADO: La tabla de frecuencias ahora normaliza las Sofit
         freq_map = purge_map.copy()
         freq_map[SHIN_DOT] = None
         freq_map[SIN_DOT] = None
@@ -92,7 +93,7 @@ class TorahEngine:
                         self._inverted_index[word].add(ref)
 
     def _generate_spans(self, normalized_words: list[str], raw_verse: str) -> list[tuple[int, int]]:
-        ignore_pattern = r'[\u0591-\u05C0\u05C3-\u05C7\u05BE]*'
+        ignore_pattern = r'[\u0591-\u05C0\u05C3-\u05C7\u05BE\u05F4]*'
         spans = []
         if self.tradition == "pragmatic_search":
             boundary_assertion = r'(?=[\s\u05BE]|$)' 
