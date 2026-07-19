@@ -16,7 +16,6 @@ corpus = engine.raw_corpus
 
 st.title("Otzar Torah: Analytics")
 
-# --- BARRA LATERAL ---
 st.sidebar.header("Control de Filtros")
 ex_space = st.sidebar.checkbox("Excluir Espacios", value=False)
 ex_maqaf = st.sidebar.checkbox("Excluir Maqaf", value=False)
@@ -35,11 +34,7 @@ if selected_book != "Todos":
 selected_verses = ["Todos"]
 if selected_chapter != "Todos":
     verses = list(corpus[selected_book][selected_chapter].keys())
-    selected_verses = st.sidebar.multiselect(
-        "Versículo(s)", 
-        ["Todos"] + verses, 
-        default=["Todos"]
-    )
+    selected_verses = st.sidebar.multiselect("Versículo(s)", ["Todos"] + verses, default=["Todos"])
 
 # --- LÓGICA DE EXTRACCIÓN ---
 text_blocks = []
@@ -58,7 +53,18 @@ else:
 
 full_text = " ".join(text_blocks)
 
-# --- PESTAÑAS DE VISUALIZACIÓN ---
+# --- MÉTRICAS CRIPTOGRÁFICAS (KPIs) ---
+st.markdown("---")
+metrics = engine.get_gematria_metrics(full_text)
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Gematria Total (Absoluta)", f"{metrics['gematria_absoluta']:,}")
+with col2:
+    st.metric("Mispar Katan (Raíz Digital)", f"{metrics['mispar_katan']:,}")
+with col3:
+    pass # Espacio de métrica reservado para futuras implementaciones
+st.markdown("---")
+
 tab1, tab2 = st.tabs(["Frecuencias y Tablas", "Buscador de Raíces"])
 
 with tab1:
@@ -75,10 +81,10 @@ with tab1:
     df = pd.DataFrame(list(freq_dist.items()), columns=["Caracter", "Apariciones"])
     df.index += 1 
     
-    col1, col2 = st.columns([1, 2])
-    with col1:
+    colA, colB = st.columns([1, 2])
+    with colA:
         st.metric("Total de Caracteres", sum(freq_dist.values()))
-    with col2:
+    with colB:
         st.dataframe(df, use_container_width=True)
         
     if "Todos" not in selected_verses:
@@ -89,17 +95,14 @@ with tab2:
     st.subheader("Motor de Búsqueda Simétrico")
     
     col_search, col_mode = st.columns([2, 1])
-    
     with col_search:
         query = st.text_input("Ingresa raíz en hebreo (Ej. אלהים)", "")
-    
     with col_mode:
         search_strategy = st.radio(
             "Estrategia de Intersección",
             options=["Búsqueda Relajada (Subcadenas)", "Match Exacto (Palabra Aislada)"],
             help="Relajada: Ignora prefijos gramaticales. Exacta: Exige coincidencia 1:1 con la palabra indexada."
         )
-    
     exact_mode = search_strategy == "Match Exacto (Palabra Aislada)"
     
     if query:

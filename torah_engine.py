@@ -22,6 +22,12 @@ class TorahEngine:
     ):
         self.tradition = reading_tradition
         self.purity = consonantal_purity
+        self.GEMATRIA_MAP = {
+            'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9,
+            'י': 10, 'כ': 20, 'ך': 20, 'ל': 30, 'מ': 40, 'ם': 40, 'נ': 50, 'ן': 50,
+            'ס': 60, 'ע': 70, 'פ': 80, 'ף': 80, 'צ': 90, 'ץ': 90, 'ק': 100, 'ר': 200,
+            'ש': 300, 'ת': 400
+        }
         self._build_tables()
         self._verse_data = {}      
         self._inverted_index = defaultdict(set) 
@@ -65,15 +71,6 @@ class TorahEngine:
             
         self.SEARCH_TABLE = str.maketrans(search_map)
 
-    def count_letters(self, text: str, exclude_maqaf: bool = True) -> int:
-        if exclude_maqaf:
-            return len(text.translate(self.NO_SPACE_TABLE))
-        temp_map = self.PURGE_TABLE.copy() # type: ignore
-        temp_map[SPACE_CHAR] = None
-        temp_map[SHIN_DOT] = None
-        temp_map[SIN_DOT] = None
-        return len(text.translate(temp_map))
-
     def get_frequency_distribution(self, text: str, exclude_spaces: bool = False, exclude_maqaf: bool = False) -> dict:
         clean_text = text.translate(self.FREQ_TABLE)
         if exclude_spaces:
@@ -81,6 +78,21 @@ class TorahEngine:
         if exclude_maqaf:
             clean_text = clean_text.replace(chr(HEBREW_MAQAF), "")
         return dict(Counter(clean_text).most_common())
+
+    def get_gematria_metrics(self, text: str) -> dict:
+        # Se remueve ruido de fondo para el cómputo matemático
+        clean_text = text.translate(self.FREQ_TABLE).replace(chr(SPACE_CHAR), "").replace(chr(HEBREW_MAQAF), "")
+        
+        # O(N): Extracción de Gematria Absoluta
+        total_gematria = sum(self.GEMATRIA_MAP.get(c, 0) for c in clean_text)
+        
+        # O(N): Mispar Katan (eliminación de magnitud, se extrae el primer dígito del valor numérico)
+        katan_sum = sum(int(str(self.GEMATRIA_MAP.get(c, 0))[0]) for c in clean_text if c in self.GEMATRIA_MAP)
+        
+        return {
+            "gematria_absoluta": total_gematria,
+            "mispar_katan": katan_sum
+        }
 
     def normalize_for_search(self, text: str) -> str:
         return text.translate(self.SEARCH_TABLE)
