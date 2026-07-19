@@ -3,7 +3,6 @@ import pandas as pd
 import json
 from torah_engine import TorahEngine
 
-# CORRECCIÓN: Nomenclatura del Proyecto
 st.set_page_config(page_title="Otzar Torah", layout="wide")
 
 @st.cache_resource
@@ -28,10 +27,14 @@ if selected_book != "Todos":
     chapters = list(corpus[selected_book].keys())
     selected_chapter = st.sidebar.selectbox("Capítulo", ["Todos"] + chapters)
 
-selected_verse = "Todos"
+selected_verses = ["Todos"]
 if selected_chapter != "Todos":
     verses = list(corpus[selected_book][selected_chapter].keys())
-    selected_verse = st.sidebar.selectbox("Versículo", ["Todos"] + verses)
+    selected_verses = st.sidebar.multiselect(
+        "Versículo(s)", 
+        ["Todos"] + verses, 
+        default=["Todos"]
+    )
 
 # --- LÓGICA DE EXTRACCIÓN ---
 text_blocks = []
@@ -42,10 +45,11 @@ if selected_book == "Todos":
 elif selected_chapter == "Todos":
     for c in corpus[selected_book].values():
         text_blocks.extend(c.values())
-elif selected_verse == "Todos":
+elif "Todos" in selected_verses or not selected_verses:
     text_blocks.extend(corpus[selected_book][selected_chapter].values())
 else:
-    text_blocks.append(corpus[selected_book][selected_chapter][selected_verse])
+    for v in selected_verses:
+        text_blocks.append(corpus[selected_book][selected_chapter][v])
 
 full_text = " ".join(text_blocks)
 
@@ -53,7 +57,8 @@ full_text = " ".join(text_blocks)
 tab1, tab2 = st.tabs(["Frecuencias y Tablas", "Buscador de Raíces"])
 
 with tab1:
-    st.subheader(f"Distribución Matemática: {selected_book} {selected_chapter}:{selected_verse}")
+    v_title = "Todos" if "Todos" in selected_verses else ", ".join(selected_verses)
+    st.subheader(f"Distribución Matemática: {selected_book} {selected_chapter}:{v_title}")
     
     freq_dist = engine.get_frequency_distribution(full_text)
     if " " in freq_dist:
@@ -70,7 +75,7 @@ with tab1:
     with col2:
         st.dataframe(df, use_container_width=True)
         
-    if selected_verse != "Todos":
+    if "Todos" not in selected_verses:
         st.markdown("### Texto Crudo")
         st.markdown(f"<div dir='rtl' style='font-size:24px;'>{full_text}</div>", unsafe_allow_html=True)
 
@@ -83,7 +88,6 @@ with tab2:
         query = st.text_input("Ingresa raíz en hebreo (Ej. אלהים)", "")
     
     with col_mode:
-        # CORRECCIÓN: Exposición explícita de la arquitectura de búsqueda
         search_strategy = st.radio(
             "Estrategia de Intersección",
             options=["Búsqueda Relajada (Subcadenas)", "Match Exacto (Palabra Aislada)"],
