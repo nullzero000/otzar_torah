@@ -14,7 +14,14 @@ SOFIT_TO_REGULAR = {'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ'}
 REGULAR_TO_SOFIT = {v: k for k, v in SOFIT_TO_REGULAR.items()}
 
 class TorahEngine:
-    def __init__(self, raw_corpus: dict):
+    def __init__(
+        self, 
+        raw_corpus: dict, 
+        reading_tradition: Literal["pragmatic_search", "masoretic_unity"] = "pragmatic_search",
+        consonantal_purity: Literal["distinguish_shin_sin", "full_consonantal"] = "distinguish_shin_sin"
+    ):
+        self.tradition = reading_tradition
+        self.purity = consonantal_purity
         self._build_tables()
         self._verse_data = {}      
         self._inverted_index = defaultdict(set) 
@@ -22,40 +29,124 @@ class TorahEngine:
         self.build_index(raw_corpus)
 
     def _build_tables(self):
-        purge_map = {cp: None for cp in range(HEBREW_NIKKUD_START, HEBREW_NIKKUD_END + 1)}
+        excluded = {HEBREW_MAQAF}
+        if self.purity == "distinguish_shin_sin":
+            excluded |= {SHIN_DOT, SIN_DOT}
+
+        purge_map = {
+            cp: None 
+            for cp in range(HEBREW_NIKKUD_START, HEBREW_NIKKUD_END + 1)
+            if cp not in excluded
+        }
         purge_map[HEBREW_GERSHAYIM] = None
-        
-        # Tabla base de limpieza (Normalización Sofit + Limpieza Nikkud)
-        self.FREQ_TABLE = str.maketrans({**purge_map, SHIN_DOT: None, SIN_DOT: None, **{ord(s): r for s, r in SOFIT_TO_REGULAR.items()}})
-        
-        # Tabla de búsqueda (Normalización + Maqaf como espacio)
+
+        no_space_map = purge_map.copy()
+        no_space_map[SPACE_CHAR] = None
+        no_space_map[HEBREW_MAQAF] = None
+        no_space_map[SHIN_DOT] = None 
+        no_space_map[SIN_DOT] = None
+        self.NO_SPACE_TABLE = str.maketrans(no_space_map)
+
+        freq_map = purge_map.copy()
+        freq_map[SHIN_DOT] = None
+        freq_map[SIN_DOT] = None
+        for sofit, regular in SOFIT_TO_REGULAR.items():
+            freq_map[ord(sofit)] = regular
+        self.FREQ_TABLE = str.maketrans(freq_map)
+
         search_map = purge_map.copy()
-        search_map[HEBREW_MAQAF] = SPACE_CHAR
-        for s, r in SOFIT_TO_REGULAR.items(): search_map[ord(s)] = r
+        if self.tradition == "pragmatic_search":
+            search_map[HEBREW_MAQAF] = SPACE_CHAR 
+        else:
+            search_map[HEBREW_MAQAF] = None       
+
+        for sofit, regular in SOFIT_TO_REGULAR.items():
+            search_map[ord(sofit)] = regular
+            
         self.SEARCH_TABLE = str.maketrans(search_map)
 
-    def get_frequency_distribution(self, text: str, exclude_spaces: bool, exclude_maqaf: bool) -> dict:
-        # Aplicar limpieza base
-        clean_text = text.translate(self.FREQ_TABLE)
-        
-        # Filtrado dinámico
-        if exclude_spaces:
-            clean_text = clean_text.replace(" ", "")
+    def count_letters(self, text: str, exclude_maqaf: bool = True) -> int:
         if exclude_maqaf:
-            clean_text = clean_text.replace("־", "")
-            
+            return len(text.translate(self.NO_SPACE_TABLE))
+        temp_map = self.PURGE_TABLE.copy() # type: ignore
+        temp_map[SPACE_CHAR] = None
+        temp_map[SHIN_DOT] = None
+        temp_map[SIN_DOT] = None
+        return len(text.translate(temp_map))
+
+    def get_frequency_distribution(self, text: str, exclude_spaces: bool = False, exclude_maqaf: bool = False) -> dict:
+        clean_text = text.translate(self.FREQ_TABLE)
+        if exclude_spaces:
+            clean_text = clean_text.replace(chr(SPACE_CHAR), "")
+        if exclude_maqaf:
+            clean_text = clean_text.replace(chr(HEBREW_MAQAF), "")
         return dict(Counter(clean_text).most_common())
+
+    def normalize_for_search(self, text: str) -> str:
+        return text.translate(self.SEARCH_TABLE)
 
     def build_index(self, corpus: dict):
         for book, chapters in corpus.items():
             for chap_num, verses in chapters.items():
                 for verse_num, raw_verse in verses.items():
                     ref = f"{book} {chap_num}:{verse_num}"
-                    vector = raw_verse.translate(self.SEARCH_TABLE).split()
+                    vector = self.normalize_for_search(raw_verse).split()
                     self._verse_data[ref] = {"raw": raw_verse, "vector": vector}
                     for word in vector:
                         self._inverted_index[word].add(ref)
 
+    def _generate_spans(self, normalized_words: list[str], raw_verse: str) -> list[tuple[int, int]]:
+        ignore_pattern = r'[\u0591-\u05C0\u05C3-\u05C7\u05BE\u05F4]*'
+        spans = []
+        if self.tradition == "pragmatic_search":
+            boundary_assertion = r'(?=[\s\u05BE]|$)' 
+        else:
+            boundary_assertion = r'(?=[\s]|$)'       
+
+        for q_word in normalized_words:
+            regex_chars = []
+            for char in q_word:
+                if char in REGULAR_TO_SOFIT:
+                    regex_chars.append(f"[{char}{REGULAR_TO_SOFIT[char]}]")
+                else:
+                    regex_chars.append(char)
+            regex_str = ignore_pattern.join(regex_chars) + boundary_assertion
+            for match in re.finditer(regex_str, raw_verse):
+                spans.append(match.span())
+        return spans
+
     def search(self, query: str, exact: bool = False) -> dict:
-        # Simplificado para brevedad
-        return {"query": query, "total_verses": 0, "results": []} # Implementar lógica completa aquí
+        q_vector = self.normalize_for_search(query).split()
+        if not q_vector:
+            return {"query": query, "total_verses": 0, "results": []}
+
+        matched_refs = set()
+        if exact:
+            for i, q_word in enumerate(q_vector):
+                refs_for_word = self._inverted_index.get(q_word, set())
+                if i == 0:
+                    matched_refs = refs_for_word.copy()
+                else:
+                    matched_refs.intersection_update(refs_for_word)
+                if not matched_refs: 
+                    break
+        else:
+            for i, q_word in enumerate(q_vector):
+                refs_for_word = set()
+                for vocab_word, refs in self._inverted_index.items():
+                    if vocab_word.endswith(q_word):
+                        refs_for_word.update(refs)
+                if i == 0:
+                    matched_refs = refs_for_word
+                else:
+                    matched_refs.intersection_update(refs_for_word)
+                if not matched_refs: 
+                    break
+
+        results = []
+        for ref in matched_refs:
+            raw = self._verse_data[ref]["raw"]
+            spans = self._generate_spans(q_vector, raw)
+            results.append({"reference": ref, "raw_verse": raw, "spans": spans})
+
+        return {"query": query, "total_verses": len(results), "results": results}
