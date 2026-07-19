@@ -16,6 +16,7 @@ corpus = engine.raw_corpus
 
 st.title("Otzar Torah: Analytics")
 
+# --- BARRA LATERAL ---
 st.sidebar.header("Control de Filtros")
 ex_space = st.sidebar.checkbox("Excluir Espacios", value=False)
 ex_maqaf = st.sidebar.checkbox("Excluir Maqaf", value=False)
@@ -34,7 +35,11 @@ if selected_book != "Todos":
 selected_verses = ["Todos"]
 if selected_chapter != "Todos":
     verses = list(corpus[selected_book][selected_chapter].keys())
-    selected_verses = st.sidebar.multiselect("Versículo(s)", ["Todos"] + verses, default=["Todos"])
+    selected_verses = st.sidebar.multiselect(
+        "Versículo(s)", 
+        ["Todos"] + verses, 
+        default=["Todos"]
+    )
 
 # --- LÓGICA DE EXTRACCIÓN ---
 text_blocks = []
@@ -58,13 +63,14 @@ st.markdown("---")
 metrics = engine.get_gematria_metrics(full_text)
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.metric("Gematria Total (Absoluta)", f"{metrics['gematria_absoluta']:,}")
+    st.metric("Gematria (Absoluta)", f"{metrics['gematria_absoluta']:,}")
 with col2:
-    st.metric("Mispar Katan (Raíz Digital)", f"{metrics['mispar_katan']:,}")
+    st.metric("Mispar Katan (Suma de Base)", f"{metrics['mispar_katan']:,}")
 with col3:
-    pass # Espacio de métrica reservado para futuras implementaciones
+    st.metric("Raíz Digital (1-9)", metrics['raiz_digital'])
 st.markdown("---")
 
+# --- PESTAÑAS DE VISUALIZACIÓN ---
 tab1, tab2 = st.tabs(["Frecuencias y Tablas", "Buscador de Raíces"])
 
 with tab1:
@@ -95,14 +101,17 @@ with tab2:
     st.subheader("Motor de Búsqueda Simétrico")
     
     col_search, col_mode = st.columns([2, 1])
+    
     with col_search:
         query = st.text_input("Ingresa raíz en hebreo (Ej. אלהים)", "")
+    
     with col_mode:
         search_strategy = st.radio(
             "Estrategia de Intersección",
             options=["Búsqueda Relajada (Subcadenas)", "Match Exacto (Palabra Aislada)"],
             help="Relajada: Ignora prefijos gramaticales. Exacta: Exige coincidencia 1:1 con la palabra indexada."
         )
+    
     exact_mode = search_strategy == "Match Exacto (Palabra Aislada)"
     
     if query:
