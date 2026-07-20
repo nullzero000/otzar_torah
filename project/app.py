@@ -14,6 +14,8 @@ from src.logic.search import search_in_corpus
 from src.data.reference_corpora import BASE_LETTERS, CANON_ZONANA, TANACH_TEXT_ONLY
 
 st.set_page_config(layout="wide", page_title="Otzar Torah Analyzer")
+if "search_query_state" not in st.session_state:
+    st.session_state.search_query_state = ""
 checkpoint_path = Path(__file__).parent / "output/pipeline_checkpoint.json"
 review_path = Path(__file__).parent / "output/review_state.json"
 
@@ -88,6 +90,28 @@ with tab_calc:
         df_freq = df_freq[df_freq['Frecuencia'] > 0].sort_values(by='Frecuencia', ascending=False)
         st.dataframe(df_freq, use_container_width=True)
         
+        # --- Inspector de Palabra Individual ---
+        st.divider()
+        st.subheader("🔍 Inspector de Palabra")
+        unique_words = list(dict.fromkeys(clean_text_concat.split()))
+        selected_word = st.selectbox("Aísla una palabra del texto actual para analizarla:", ["(Ninguna)"] + unique_words)
+        
+        if selected_word != "(Ninguna)":
+            w_gadol = calculate_mispar_gadol(selected_word)
+            w_siduri = calculate_mispar_siduri(selected_word)
+            w_katan = reduce_to_single_digit(w_gadol)
+            
+            st.markdown(f"""
+            <div style='background-color: var(--secondary-background-color); padding: 15px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); margin-bottom: 15px;'>
+                <h3 style='margin-top:0; color: var(--primary-color);'>Análisis de: {selected_word}</h3>
+                <p style='margin-bottom:0;'><b>Mispar Gadol:</b> {w_gadol} | <b>Mispar Siduri:</b> {w_siduri} | <b>Mispar Katan:</b> {w_katan}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"Enviar '{selected_word}' al Buscador Global", type="primary"):
+                st.session_state.search_query_state = selected_word
+                st.rerun()
+        
         st.divider()
         st.subheader("Motor de Expansión Miluy (5 Niveles)")
         miluy_sys = st.selectbox("Sistema Luriánico", ["AB", "SAG", "MAH", "BAN"])
@@ -116,7 +140,7 @@ with tab_calc:
         
         st.divider()
         st.subheader("Buscador de Palabras")
-        search_query = st.text_input("Ingresa la palabra o frase a buscar (Hebreo):")
+        search_query = st.text_input("Ingresa la palabra o frase a buscar (Hebreo):", key="search_query_state")
         if search_query:
             search_results = search_in_corpus(source_data, search_query, kq_mode=kq_mode_calc, keep_maqaf=count_spaces_maqaf)
             if search_results:
