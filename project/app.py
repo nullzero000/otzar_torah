@@ -93,8 +93,8 @@ with tab_calc:
         miluy_sys = st.selectbox("Sistema Luriánico", ["AB", "SAG", "MAH", "BAN"])
         
         if st.button(f"Ejecutar Expansión {miluy_sys}"):
-            if len(clean_text_concat.replace(" ", "")) > 500:
-                st.warning("Texto muy largo. Limita la expansión a un solo versículo o palabra.")
+            if len(clean_text_concat.replace(" ", "")) > 5000:
+                st.warning("Texto masivo (>5000 caracteres). El crecimiento exponencial en Nivel 5 colapsará el navegador. Limítalo a un capítulo a la vez.")
             else:
                 miluy_data = analyze_miluy_levels(clean_text_concat, miluy_sys, levels=5)
                 
