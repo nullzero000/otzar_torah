@@ -153,6 +153,34 @@ with tab_calc:
             df_freq = df_freq[df_freq['Frecuencia'] > 0].sort_values(by='Frecuencia', ascending=False)
             st.dataframe(df_freq, use_container_width=True)
         
+        
+        # ====================================================
+        # MOTOR MILUY GLOBAL (TODO EL TEXTO)
+        # ====================================================
+        st.divider()
+        st.subheader("Motor de Expansión Miluy Global (5 Niveles)")
+        miluy_sys_global = st.selectbox("Sistema Luriánico para la selección completa", ["AB", "SAG", "MAH", "BAN"], key="miluy_global_sys")
+        
+        if st.button(f"Ejecutar Expansión Global en {miluy_sys_global}"):
+            if len(clean_text_concat.replace(" ", "")) > 5000:
+                st.warning("Texto masivo (>5000 caracteres). El crecimiento exponencial en Nivel 5 colapsará el navegador. Limítalo a un capítulo a la vez.")
+            else:
+                miluy_data_global = analyze_miluy_levels(clean_text_concat, miluy_sys_global, levels=5)
+                
+                df_export = pd.DataFrame([{k: v for k, v in d.items() if k != 'frequencies'} for d in miluy_data_global])
+                csv = df_export.to_csv(index=False).encode('utf-8')
+                st.download_button(label="Descargar CSV con Textos Expandidos", data=csv, file_name=f"miluy_global_{miluy_sys_global}.csv", mime="text/csv")
+                
+                for lvl in miluy_data_global:
+                    with st.expander(f"Nivel {lvl['level']} | Palabras: {lvl['word_count']} | Letras: {lvl['letter_count']} | Gadol: {lvl['gematria']} | Katan: {lvl['gematria_katan']}"):
+                        d_col1, d_col2 = st.columns([1, 2])
+                        with d_col1:
+                            df_lvl_freq = pd.DataFrame.from_dict(lvl['frequencies'], orient='index', columns=['Frecuencia'])
+                            df_lvl_freq = df_lvl_freq[df_lvl_freq['Frecuencia'] > 0].sort_values(by='Frecuencia', ascending=False)
+                            st.dataframe(df_lvl_freq, use_container_width=True)
+                        with d_col2:
+                            st.text_area("Texto Oculto", lvl['text'], height=150, disabled=True, key=f"txt_global_{lvl['level']}")
+        
         # --- Buscador ---
         st.divider()
         st.subheader("Buscador de Palabras")
