@@ -13,8 +13,8 @@ from src.logic.search import search_in_corpus
 from src.data.reference_corpora import BASE_LETTERS, CANON_ZONANA, TANACH_TEXT_ONLY
 
 st.set_page_config(layout="wide", page_title="Otzar Torah Analyzer")
-checkpoint_path = Path("output/pipeline_checkpoint.json")
-review_path = Path("output/review_state.json")
+checkpoint_path = Path(__file__).parent / "output/pipeline_checkpoint.json"
+review_path = Path(__file__).parent / "output/review_state.json"
 
 if not checkpoint_path.exists():
     st.error("Pipeline no ejecutado. Corre `python3 main.py` primero.")
