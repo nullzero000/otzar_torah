@@ -161,7 +161,7 @@ with tab_calc:
         st.subheader("Motor de Expansión Miluy Global (5 Niveles)")
         miluy_sys_global = st.selectbox("Sistema Luriánico para la selección completa", ["AB", "SAG", "MAH", "BAN"], key="miluy_global_sys")
         
-        if st.button(f"Ejecutar Expansión Global en {miluy_sys_global}"):
+        if st.toggle(f"Mantener visible la Expansión Global en {miluy_sys_global}", value=False, key="toggle_miluy_global"):
             if len(clean_text_concat.replace(" ", "")) > 5000:
                 st.warning("Texto masivo (>5000 caracteres). El crecimiento exponencial en Nivel 5 colapsará el navegador. Limítalo a un capítulo a la vez.")
             else:
