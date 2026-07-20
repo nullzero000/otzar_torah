@@ -8,7 +8,7 @@ from src.logic.review_state import load_review_state, save_review_decision
 from src.logic.letter_frequency import count_letter_frequency
 from src.logic.text_normalization import clean_corpus
 from src.logic.comparison import build_frequency_matrix
-from src.logic.gematria import calculate_mispar_gadol, reduce_to_single_digit
+from src.logic.gematria import calculate_mispar_gadol, reduce_to_single_digit, calculate_mispar_siduri
 from src.logic.search import search_in_corpus
 from src.data.reference_corpora import BASE_LETTERS, CANON_ZONANA, TANACH_TEXT_ONLY
 
@@ -79,16 +79,23 @@ with tab_calc:
         # UI de Métricas Matemáticas
         st.subheader("Gematria y Conteos")
         m_gadol = calculate_mispar_gadol(clean_text_concat)
+        m_siduri = calculate_mispar_siduri(clean_text_concat)
         m_katan = reduce_to_single_digit(m_gadol)
         freq = count_letter_frequency(clean_text_concat, count_spaces_maqaf=count_spaces_maqaf)
+        word_count = len(clean_text_concat.split())
         
-        m_col1, m_col2, m_col3 = st.columns(3)
-        m_col1.metric("Mispar Gadol (Suma Total)", m_gadol)
-        m_col2.metric("Un Dígito (Raíz Digital)", m_katan)
-        m_col3.metric("Total Caracteres", sum(freq.values()))
+        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+        m_col1.metric("Mispar Gadol (Estándar)", f"{m_gadol:,}")
+        m_col2.metric("Mispar Siduri (Ordinal)", f"{m_siduri:,}")
+        m_col3.metric("Un Dígito (Katan)", m_katan)
+        m_col4.metric("Palabras", f"{word_count:,}")
+        m_col5.metric("Caracteres", f"{sum(freq.values()):,}")
         
-        df_freq = pd.DataFrame.from_dict(freq, orient='index', columns=['Frecuencia']).T
-        st.dataframe(df_freq)
+        # Tabla vertical ordenada de mayor a menor
+        df_freq = pd.DataFrame.from_dict(freq, orient='index', columns=['Frecuencia'])
+        df_freq.index.name = 'Letra/Carácter'
+        df_freq = df_freq.sort_values(by='Frecuencia', ascending=False)
+        st.dataframe(df_freq, use_container_width=True)
         
         # --- Buscador ---
         st.divider()

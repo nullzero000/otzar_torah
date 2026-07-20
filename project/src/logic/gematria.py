@@ -7,18 +7,21 @@ GEMATRIA_VALUES = {
 }
 
 def calculate_mispar_gadol(text: str) -> int:
-    """Suma tradicional de valores (Gematria estándar / Mispar Gadol)."""
     return sum(GEMATRIA_VALUES.get(char, 0) for char in text)
 
 def reduce_to_single_digit(n: int) -> int:
-    """Reducción teosófica a un solo dígito (Raíz digital)."""
     if n == 0:
         return 0
     return 9 if n % 9 == 0 else n % 9
 
 def calculate_mispar_katan(text: str) -> int:
-    """
-    Suma los valores reducidos de cada letra y reduce el resultado final a un dígito.
-    """
     total = sum(reduce_to_single_digit(GEMATRIA_VALUES.get(char, 0)) for char in text if char in GEMATRIA_VALUES)
     return reduce_to_single_digit(total)
+
+def calculate_mispar_siduri(text: str) -> int:
+    base_letters = [
+        'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י',
+        'כ', 'ל', 'מ', 'נ', 'ס', 'ע', 'פ', 'צ', 'ק', 'ר', 'ש', 'ת'
+    ]
+    ordinal_map = {char: idx + 1 for idx, char in enumerate(base_letters)}
+    return sum(ordinal_map.get(char, 0) for char in text)
