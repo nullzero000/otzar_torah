@@ -26,23 +26,16 @@ review_state = load_review_state(review_path)
 
 tab_calc, tab_audit = st.tabs(["Calculadora y Explorador", "Auditoría de Discrepancias"])
 
-# ==========================================
-# TAB 1: CALCULADORA ORIGINAL (Gematria, Conteos y Búsqueda)
-# ==========================================
 with tab_calc:
     st.header("Explorador de Texto y Gematria")
-    
     if "sefaria_mam" in state:
         source_data = state["sefaria_mam"]
         
-        # --- Controles Adicionales ---
         ctrl_col1, ctrl_col2 = st.columns(2)
-        kq_mode_calc = ctrl_col1.radio("Filtro K/Q (Para toda la pestaña)", ["ketiv", "qere"], key="kq_calc", horizontal=True)
+        kq_mode_calc = ctrl_col1.radio("Filtro K/Q", ["ketiv", "qere"], key="kq_calc", horizontal=True)
         count_spaces_maqaf = ctrl_col2.checkbox("Incluir Espacios y Maqaf (־) en conteos")
         
         st.divider()
-        
-        # --- Explorador de Jerarquía ---
         st.subheader("Filtro de Corpus")
         col1, col2, col3 = st.columns(3)
         
@@ -56,16 +49,13 @@ with tab_calc:
         else:
             chapters = list(dict.fromkeys(k.split(":")[1] for k in source_data.keys() if k.startswith(f"{selected_book}:")))
             selected_chapter = col2.selectbox("Capítulo", ["Todos"] + sorted(chapters, key=int))
-            
             if selected_chapter == "Todos":
                 target_keys = [k for k in source_data.keys() if k.startswith(f"{selected_book}:")]
                 col3.selectbox("Versículo", ["Todos"], disabled=True)
             else:
                 verses = list(dict.fromkeys(k.split(":")[2] for k in source_data.keys() if k.startswith(f"{selected_book}:{selected_chapter}:")))
                 verses_sorted = sorted(verses, key=int)
-                verse_options = ["Todos"] + verses_sorted
-                selected_verse = col3.selectbox("Versículo", verse_options)
-                
+                selected_verse = col3.selectbox("Versículo", ["Todos"] + verses_sorted)
                 if selected_verse == "Todos":
                     target_keys = [k for k in source_data.keys() if k.startswith(f"{selected_book}:{selected_chapter}:")]
                 else:
@@ -74,10 +64,8 @@ with tab_calc:
         raw_text_concat = " ".join(source_data[k] for k in target_keys if k in source_data)
         clean_text_concat = clean_corpus(raw_text_concat, kq_mode=kq_mode_calc, keep_maqaf=count_spaces_maqaf)
         
-        # UI de Texto
         st.text_area("Hebreo Limpio (Procesado)", clean_text_concat, height=100, disabled=True)
         
-        # UI de Métricas Matemáticas
         st.subheader("Gematria y Conteos")
         m_gadol = calculate_mispar_gadol(clean_text_concat)
         m_siduri = calculate_mispar_siduri(clean_text_concat)
@@ -85,48 +73,47 @@ with tab_calc:
         freq = count_letter_frequency(clean_text_concat, count_spaces_maqaf=count_spaces_maqaf)
         word_count = len(clean_text_concat.split())
         
-        # Uso de markdown para evitar que Streamlit trunque los números grandes
         st.markdown(f"""
-        <div style='display: flex; justify-content: space-between; background-color: #0e1117; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333;'>
-            <div><p style='color: #888; font-size: 14px; margin: 0;'>Mispar Gadol</p><h2 style='margin: 0; color: #4CAF50;'>{m_gadol:,}</h2></div>
-            <div><p style='color: #888; font-size: 14px; margin: 0;'>Mispar Siduri</p><h2 style='margin: 0; color: #2196F3;'>{m_siduri:,}</h2></div>
-            <div><p style='color: #888; font-size: 14px; margin: 0;'>Un Dígito (Katan)</p><h2 style='margin: 0; color: #FF9800;'>{m_katan}</h2></div>
-            <div><p style='color: #888; font-size: 14px; margin: 0;'>Palabras</p><h2 style='margin: 0; color: #E91E63;'>{word_count:,}</h2></div>
-            <div><p style='color: #888; font-size: 14px; margin: 0;'>Caracteres</p><h2 style='margin: 0; color: #9C27B0;'>{sum(freq.values()):,}</h2></div>
+        <div style='display: flex; justify-content: space-between; background-color: var(--secondary-background-color); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(128,128,128,0.2);'>
+            <div><p style='color: var(--text-color); opacity: 0.7; font-size: 14px; margin: 0;'>Mispar Gadol</p><h2 style='margin: 0; color: var(--primary-color);'>{m_gadol:,}</h2></div>
+            <div><p style='color: var(--text-color); opacity: 0.7; font-size: 14px; margin: 0;'>Mispar Siduri</p><h2 style='margin: 0; color: var(--primary-color);'>{m_siduri:,}</h2></div>
+            <div><p style='color: var(--text-color); opacity: 0.7; font-size: 14px; margin: 0;'>Un Dígito (Katan)</p><h2 style='margin: 0; color: var(--primary-color);'>{m_katan}</h2></div>
+            <div><p style='color: var(--text-color); opacity: 0.7; font-size: 14px; margin: 0;'>Palabras</p><h2 style='margin: 0; color: var(--primary-color);'>{word_count:,}</h2></div>
+            <div><p style='color: var(--text-color); opacity: 0.7; font-size: 14px; margin: 0;'>Caracteres</p><h2 style='margin: 0; color: var(--primary-color);'>{sum(freq.values()):,}</h2></div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Tabla vertical ordenada de mayor a menor
         df_freq = pd.DataFrame.from_dict(freq, orient='index', columns=['Frecuencia'])
         df_freq.index.name = 'Letra/Carácter'
-        df_freq = df_freq.sort_values(by='Frecuencia', ascending=False)
+        df_freq = df_freq[df_freq['Frecuencia'] > 0].sort_values(by='Frecuencia', ascending=False)
         st.dataframe(df_freq, use_container_width=True)
         
-                
-        # --- Motor Miluy (Kabalístico) ---
         st.divider()
         st.subheader("Motor de Expansión Miluy (5 Niveles)")
         miluy_sys = st.selectbox("Sistema Luriánico", ["AB", "SAG", "MAH", "BAN"])
         
         if st.button(f"Ejecutar Expansión {miluy_sys}"):
             if len(clean_text_concat.replace(" ", "")) > 500:
-                st.warning("Texto muy largo. Limita la expansión a un solo versículo o palabra para evitar desbordamiento de memoria.")
+                st.warning("Texto muy largo. Limita la expansión a un solo versículo o palabra.")
             else:
                 miluy_data = analyze_miluy_levels(clean_text_concat, miluy_sys, levels=5)
-                df_miluy = pd.DataFrame(miluy_data)
                 
-                st.dataframe(
-                    df_miluy[["level", "letter_count", "gematria", "text"]],
-                    use_container_width=True,
-                    column_config={
-                        "level": "Nivel",
-                        "letter_count": "Letras",
-                        "gematria": "Gematria",
-                        "text": st.column_config.TextColumn("Texto Expandido", width="large")
-                    }
-                )
-
-        # --- Buscador ---
+                # Botón de exportación con texto crudo
+                df_export = pd.DataFrame([{k: v for k, v in d.items() if k != 'frequencies'} for d in miluy_data])
+                csv = df_export.to_csv(index=False).encode('utf-8')
+                st.download_button(label="Descargar CSV con Textos Expandidos", data=csv, file_name=f"miluy_{miluy_sys}.csv", mime="text/csv")
+                
+                # Renderizar Drill-down
+                for lvl in miluy_data:
+                    with st.expander(f"Nivel {lvl['level']} | Letras: {lvl['letter_count']} | Gadol: {lvl['gematria']} | Katan: {lvl['gematria_katan']}"):
+                        d_col1, d_col2 = st.columns([1, 2])
+                        with d_col1:
+                            df_lvl_freq = pd.DataFrame.from_dict(lvl['frequencies'], orient='index', columns=['Frecuencia'])
+                            df_lvl_freq = df_lvl_freq[df_lvl_freq['Frecuencia'] > 0].sort_values(by='Frecuencia', ascending=False)
+                            st.dataframe(df_lvl_freq, use_container_width=True)
+                        with d_col2:
+                            st.text_area("Texto Oculto", lvl['text'], height=150, disabled=True, key=f"txt_{lvl['level']}")
+        
         st.divider()
         st.subheader("Buscador de Palabras")
         search_query = st.text_input("Ingresa la palabra o frase a buscar (Hebreo):")
@@ -140,54 +127,25 @@ with tab_calc:
     else:
         st.warning("Fuente Sefaria MAM no encontrada en el checkpoint.")
 
-
-# ==========================================
-# TAB 2: AUDITORÍA (Diff y Revisión)
-# ==========================================
 with tab_audit:
     st.sidebar.title("Filtros de Auditoría")
     selected_letter = st.sidebar.selectbox("Letra a auditar", ["Todas"] + BASE_LETTERS)
     top_n = st.sidebar.slider("Versículos a mostrar", 10, 100, 50)
-
     frequencies = {"canon_zonana": CANON_ZONANA, "tanach_text_only": TANACH_TEXT_ONLY}
     for label in ["sefaria_mam", "sefaria_taamei", "mechon_mamre"]:
         if label in state:
             text = " ".join(state[label].values())
-            # La auditoría no incluye espacios/maqaf para que coincida con el canon base.
-            frequencies[label] = count_letter_frequency(clean_corpus(text, kq_mode=kq_mode_calc))
-
+            frequencies[label] = count_letter_frequency(clean_corpus(text, kq_mode="ketiv"))
     st.subheader("Conteo Absoluto de Fuentes (Global)")
     st.dataframe(build_frequency_matrix(frequencies))
-    st.info("Nota: Sefaria y Mechon Mamre se comparan por versículo más abajo. Zonana y WLC no aplican al diff.")
-
-    st.subheader("Análisis de Discrepancia por Versículo")
+    
     sources_for_diff = {k: state[k] for k in ["sefaria_mam", "sefaria_taamei", "mechon_mamre"] if k in state}
-
-    discrepancies = find_letter_discrepant_verses(sources_for_diff, selected_letter, kq_mode=kq_mode_calc, top_n=top_n) if selected_letter != "Todas" else []
-
+    discrepancies = find_letter_discrepant_verses(sources_for_diff, selected_letter, kq_mode="ketiv", top_n=top_n) if selected_letter != "Todas" else []
+    
     for item in discrepancies:
         ref = item["verse_ref"]
         status = review_state.get(ref, {}).get("status", "pending")
-        
         with st.expander(f"{ref} (Spread: {item['spread']}) - {status.upper()}"):
-            if item["known_shift_zone"]:
-                st.warning("⚠️ Zona de re-versificación conocida (Decálogo)")
-                
             cols = st.columns(len(item["raw_texts"]))
             for i, (src, text) in enumerate(item["raw_texts"].items()):
                 cols[i].text_area(src, text, height=150, disabled=True)
-                
-            c1, c2, c3 = st.columns(3)
-            if c1.button("Confirmar anomalía", key=f"c_{ref}"):
-                save_review_decision(review_path, ref, "confirmed_anomaly")
-                st.rerun()
-            if c2.button("Artefacto conocido", key=f"a_{ref}"):
-                save_review_decision(review_path, ref, "known_artifact")
-                st.rerun()
-            if c3.button("Dejar pendiente", key=f"p_{ref}"):
-                save_review_decision(review_path, ref, "pending")
-                st.rerun()
-
-    if st.button("Exportar CSV Auditoría"):
-        df_export = pd.DataFrame(discrepancies)
-        st.download_button("Descargar CSV", df_export.to_csv(), "reporte_anomalias.csv", "text/csv")

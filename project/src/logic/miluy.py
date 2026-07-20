@@ -1,6 +1,7 @@
 from typing import Literal, List, Dict
 from src.data.reference_corpora import FINAL_TO_BASE
-from src.logic.gematria import calculate_mispar_gadol
+from src.logic.gematria import calculate_mispar_gadol, reduce_to_single_digit
+from src.logic.letter_frequency import count_letter_frequency
 
 MiluySystem = Literal['AB', 'SAG', 'MAH', 'BAN']
 
@@ -32,19 +33,15 @@ MILUY_EXPANSIONS = {
 def expand_word(text: str, system: MiluySystem, orthography: str = 'plene') -> str:
     expanded = []
     for char in text:
-        if char.isspace() or char == '\u05BE':  # Ignorar espacios y maqaf
+        if char.isspace() or char == '\u05BE': 
             expanded.append(char)
             continue
-            
         base_char = FINAL_TO_BASE.get(char, char)
-        
         if base_char == 'ג' and orthography == 'defective':
             expanded.append('גמל')
             continue
-            
         expanded.append(MILUY_EXPANSIONS.get(base_char, {}).get(system, base_char))
-        
-    return " ".join(expanded).replace("   ", "  ") # Preservar separaciones
+    return " ".join(expanded).replace("   ", "  ")
 
 def expand_multiple_levels(text: str, system: MiluySystem, levels: int = 5, orthography: str = 'plene') -> List[str]:
     results = [text]
@@ -56,14 +53,16 @@ def expand_multiple_levels(text: str, system: MiluySystem, levels: int = 5, orth
 
 def analyze_miluy_levels(text: str, system: MiluySystem, levels: int = 5, orthography: str = 'plene') -> List[Dict]:
     expansions = expand_multiple_levels(text, system, levels, orthography)
-    
     analysis = []
     for level, expansion in enumerate(expansions):
         clean_expansion = expansion.replace(" ", "")
+        gematria_val = calculate_mispar_gadol(clean_expansion)
         analysis.append({
             "level": level,
             "text": expansion,
             "letter_count": len(clean_expansion),
-            "gematria": calculate_mispar_gadol(clean_expansion)
+            "gematria": gematria_val,
+            "gematria_katan": reduce_to_single_digit(gematria_val),
+            "frequencies": count_letter_frequency(clean_expansion)
         })
     return analysis

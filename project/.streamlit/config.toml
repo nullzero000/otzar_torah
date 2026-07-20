@@ -1,2 +1,9 @@
+[theme]
+primaryColor = "#8B7355"
+backgroundColor = "#FDFBF7"
+secondaryBackgroundColor = "#F4F1EA"
+textColor = "#2C2C2C"
+font = "serif"
+
 [global]
 developmentMode = false
