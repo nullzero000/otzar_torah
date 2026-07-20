@@ -105,7 +105,7 @@ with tab_calc:
                 
                 # Renderizar Drill-down
                 for lvl in miluy_data:
-                    with st.expander(f"Nivel {lvl['level']} | Letras: {lvl['letter_count']} | Gadol: {lvl['gematria']} | Katan: {lvl['gematria_katan']}"):
+                    with st.expander(f"Nivel {lvl['level']} | Palabras: {lvl['word_count']} | Letras: {lvl['letter_count']} | Gadol: {lvl['gematria']} | Katan: {lvl['gematria_katan']}"):
                         d_col1, d_col2 = st.columns([1, 2])
                         with d_col1:
                             df_lvl_freq = pd.DataFrame.from_dict(lvl['frequencies'], orient='index', columns=['Frecuencia'])

@@ -61,6 +61,7 @@ def analyze_miluy_levels(text: str, system: MiluySystem, levels: int = 5, orthog
             "level": level,
             "text": expansion,
             "letter_count": len(clean_expansion),
+            "word_count": len(expansion.split()),
             "gematria": gematria_val,
             "gematria_katan": reduce_to_single_digit(gematria_val),
             "frequencies": count_letter_frequency(clean_expansion)
